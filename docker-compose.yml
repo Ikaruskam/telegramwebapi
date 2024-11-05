@@ -1,3 +1,5 @@
+version: '3.8'
+
 networks:
   dev:
 
@@ -15,11 +17,12 @@ services:
       - frontend
     networks:
       - dev
-    
 
   backend:
     build:
       context: ./backend
+    volumes:
+      - backend_data:/data  # Указание тома для хранения данных
     networks:
       - dev
 
@@ -28,3 +31,6 @@ services:
       context: ./frontend
     networks:
       - dev
+
+volumes:
+  backend_data:  # Определение тома для хранения данных
