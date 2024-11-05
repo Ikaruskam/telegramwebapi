@@ -1,69 +1,64 @@
-import random
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import uvicorn
+from sqlalchemy import create_engine, Column, Integer, String, Float
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = "sqlite:///./items.db"  # Путь к вашей базе данных SQLite
+
+# Настройка SQLAlchemy
+Base = declarative_base()
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Модель для элемента
+class Item(Base):
+    __tablename__ = "items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    weight = Column(Float)
+    height = Column(Float)
+
+# Создание таблицы
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Список элементов
-items = [
-    {
-        "id": 1,
-        "name": "Docker",
-        "weight": 10,
-        "height": 20,
-        "img": "https://static-00.iconduck.com/assets.00/docker-icon-2048x2048-5mc7mvtn.png",
-    },
-    {
-        "id": 2,
-        "name": "Nginx",
-        "weight": 15,
-        "height": 25,
-        "img": "https://www.svgrepo.com/show/373924/nginx.svg",
-    },
-    {
-        "id": 3,
-        "name": "GitHub",
-        "weight": 20,
-        "height": 30,
-        "img": "https://cdn-icons-png.flaticon.com/512/25/25231.png",
-    },
-]
-
-# Модель для нового элемента с дополнительными полями weight и height
-class Item(BaseModel):
+# Модель для входящих данных
+class ItemCreate(BaseModel):
     name: str
     weight: float
     height: float
-    img: str = "https://example.com/default-image.png"  # Задаем изображение по умолчанию
+
+@app.post("/add_item")
+def add_item(item: ItemCreate):
+    db = SessionLocal()
+    db_item = Item(name=item.name, weight=item.weight, height=item.height)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    db.close()
+    return {"message": "Item added successfully", "item": db_item}
 
 @app.get("/items")
 def get_items():
-    random.shuffle(items)
+    db = SessionLocal()
+    items = db.query(Item).all()
+    db.close()
     return items
-
-@app.post("/add_item")
-def add_item(item: Item):
-    # Добавляем новый элемент с уникальным id
-    new_item = {
-        "id": len(items) + 1,
-        "name": item.name,
-        "weight": item.weight,
-        "height": item.height,
-        "img": item.img,
-    }
-    items.append(new_item)
-    return {"message": "Item added successfully", "items": items}
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://tvoitrenerbot.ru"],
+    allow_origins=["https://tvoitrenerbot.ru"],  # Добавьте другие разрешенные источники при необходимости
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
