@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import axios from 'axios'
-import AddItemForm from './AddItemForm' // Импортируем новый компонент
+import AddItemForm from './AddItemForm'
 
 function App() {
-  const [items, setItems] = useState(null)
+  const [items, setItems] = useState([])
 
   const fetchItems = () => {
     axios.get('https://api.tvoitrenerbot.ru/items').then(r => {
@@ -17,16 +17,15 @@ function App() {
     const interval = setInterval(() => {
       fetchItems()
     }, 2000)
-    return () => clearInterval(interval)  // Очищаем интервал при размонтировании
+    return () => clearInterval(interval)
   }, [])
 
   return (
     <div>
-      <AddItemForm onItemAdded={fetchItems} /> {/* Передаем функцию обновления */}
+      <AddItemForm onItemAdded={fetchItems} />
       <div>
-        {items && items.map(item => (
+        {items.map(item => (
           <span style={{ padding: '0px 4px' }} key={item.id} className="roll-out">
-            <img src={item.img} alt='logo' width="16" style={{ padding: '0px 5px' }} />
             <span>{item.name} — Вес: {item.weight} кг, Рост: {item.height} см</span>
           </span>
         ))}
