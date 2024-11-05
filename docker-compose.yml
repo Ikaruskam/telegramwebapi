@@ -1,9 +1,22 @@
 version: '3.8'
 
-networks:
-  dev:
-
 services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    volumes:
+      - ./backend/test.db:/app/test.db  # Монтируем файл базы данных в контейнер
+    networks:
+      - dev
+
+  frontend:
+    build:
+      context: ./frontend
+    networks:
+      - dev
+
   nginx:
     image: nginx:stable-alpine
     ports:
@@ -18,19 +31,5 @@ services:
     networks:
       - dev
 
-  backend:
-    build:
-      context: ./backend
-    volumes:
-      - backend_data:/data  # Указание тома для хранения данных
-    networks:
-      - dev
-
-  frontend:
-    build:
-      context: ./frontend
-    networks:
-      - dev
-
-volumes:
-  backend_data:  # Определение тома для хранения данных
+networks:
+  dev:
