@@ -1,18 +1,20 @@
-# backend/Dockerfile
+# Используем базовый образ Python
 FROM python:3.11.9-slim
 
-# Установка зависимостей
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Устанавливаем рабочую директорию
+WORKDIR /app
 
-# Создание директории для хранения базы данных
-RUN mkdir /data
+# Копируем requirements и устанавливаем зависимости
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование приложения
-COPY . .
+# Копируем исходный код
+COPY backend /app
 
-# Установка переменной окружения для SQLite
-ENV DATABASE_URL="sqlite:////test.db"
+# Указываем переменные окружения
+ENV DATABASE_URL="sqlite:///./test.db"
+ENV TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
+ENV WEBHOOK_URL=$WEBHOOK_URL
 
-CMD [ "python", "main.py" ]
+# Запускаем приложение
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
