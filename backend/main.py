@@ -1,64 +1,53 @@
 import os
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Float
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from database import SessionLocal, engine
+from models import UserData
+import requests
+from dotenv import load_dotenv
 
-DATABASE_URL = "sqlite:///./test.db"  # Путь к вашей базе данных SQLite
+# Загрузка переменных окружения из .env
+load_dotenv()
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-# Настройка SQLAlchemy
-Base = declarative_base()
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-# Модель для элемента
-class Item(Base):
-    __tablename__ = "items"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    weight = Column(Float)
-    height = Column(Float)
-
-# Создание таблицы
-Base.metadata.create_all(bind=engine)
+# Создаем таблицы в базе данных
+UserData.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
-# Модель для входящих данных
-class ItemCreate(BaseModel):
-    name: str
-    weight: float
-    height: float
-
-@app.post("/add_item")
-def add_item(item: ItemCreate):
+# Создание сессии базы данных
+def get_db():
     db = SessionLocal()
-    db_item = Item(name=item.name, weight=item.weight, height=item.height)
-    db.add(db_item)
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Установка webhook при старте
+@app.on_event("startup")
+def setup_webhook():
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
+    response = requests.post(url, json={"url": WEBHOOK_URL})
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Webhook setup failed")
+
+@app.post("/users/")
+def create_user(user_id: str, name: str, weight: int, height: int, db: Session = Depends(get_db)):
+    # Проверяем, не существует ли уже данные для этого пользователя
+    user_data = db.query(UserData).filter(UserData.user_id == user_id).first()
+    if user_data:
+        raise HTTPException(status_code=400, detail="User data already exists")
+    
+    new_user = UserData(user_id=user_id, name=name, weight=weight, height=height)
+    db.add(new_user)
     db.commit()
-    db.refresh(db_item)
-    db.close()
-    return {"message": "Item added successfully", "item": db_item}
+    db.refresh(new_user)
+    return new_user
 
-@app.get("/items")
-def get_items():
-    db = SessionLocal()
-    items = db.query(Item).all()
-    db.close()
-    return items
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://tvoitrenerbot.ru"],  # Добавьте другие разрешенные источники при необходимости
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/users/")
+def read_user_data(user_id: str, db: Session = Depends(get_db)):
+    user_data = db.query(UserData).filter(UserData.user_id == user_id).all()
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User data not found")
+    return user_data
