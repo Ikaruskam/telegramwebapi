@@ -7,7 +7,7 @@ WORKDIR /app
 # Копируем requirements и устанавливаем зависимости
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Копируем исходный код
 COPY backend /app
