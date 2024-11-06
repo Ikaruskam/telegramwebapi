@@ -1,16 +1,13 @@
 # Используем базовый образ Python
 FROM python:3.11.9-slim
 
-# Устанавливаем рабочую директорию
-WORKDIR /app
-
 # Копируем requirements и устанавливаем зависимости
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Копируем исходный код
-COPY backend /app
+COPY .. .
 
 # Указываем переменные окружения
 ENV DATABASE_URL="sqlite:///./test.db"
