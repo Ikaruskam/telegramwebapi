@@ -7,7 +7,7 @@ RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 # Копируем исходный код
-COPY .. .
+COPY . .
 
 # Указываем переменные окружения
 ENV DATABASE_URL="sqlite:///./test.db"
@@ -15,4 +15,4 @@ ENV TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 ENV WEBHOOK_URL=$WEBHOOK_URL
 
 # Запускаем приложение
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "python", "main.py", "--host", "0.0.0.0", "--port", "8000"]
