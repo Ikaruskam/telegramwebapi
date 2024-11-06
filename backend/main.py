@@ -1,53 +1,81 @@
 import os
-import random
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
+from fastapi import FastAPI, Request, Depends
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 from dotenv import load_dotenv
 import requests
+from models import Base, User
 
-# Загружаем переменные окружения
+# Загружаем переменные окружения из .env файла
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+# Получаем токен и URL webhook из .env файла
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-app = FastAPI()
-
-# Настройка базы данных SQLite с SQLAlchemy
+# Создаем соединение с базой данных
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
-# Пример модели для хранения данных
-class Item(Base):
-    tablename = "items"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    weight = Column(Integer)
-    height = Column(Integer)
-
+# Создаем все таблицы, если их еще нет
 Base.metadata.create_all(bind=engine)
 
-@app.post("/items/")
-def create_item(name: str, weight: int, height: int, db: SessionLocal = Depends()):
-    item = Item(name=name, weight=weight, height=height)
-    db.add(item)
-    db.commit()
-    db.refresh(item)
-    return item
+# Инициализация FastAPI
+app = FastAPI()
 
-# Устанавливаем webhook для Telegram
+@app.post("/webhook")
+async def webhook(request: Request):
+    """
+    Обрабатывает запросы от Telegram через webhook.
+    Извлекает данные пользователя (user_id, first_name, username)
+    и сохраняет их в базе данных.
+    """
+    payload = await request.json()
+    print("Полученные данные от Telegram:", payload)
+
+    # Извлекаем информацию о пользователе
+    if "message" in payload:
+        message = payload["message"]
+        user_id = message["from"]["id"]
+        first_name = message["from"].get("first_name")
+        last_name = message["from"].get("last_name")
+        username = message["from"].get("username")
+
+        # Создаем сессию для работы с базой данных
+        db = SessionLocal()
+
+        # Проверяем, существует ли уже такой пользователь в базе данных
+        db_user = db.query(User).filter(User.user_id == user_id).first()
+
+        if not db_user:
+            # Если пользователя нет в базе, создаем нового
+            new_user = User(user_id=user_id, first_name=first_name, last_name=last_name, username=username)
+            db.add(new_user)
+            try:
+                db.commit()
+            except IntegrityError:
+                db.rollback()
+                return {"status": "error", "message": "Ошибка при сохранении пользователя"}
+            print(f"Пользователь {first_name} {last_name} добавлен в базу данных.")
+
+        db.close()
+
+    return {"status": "success"}
+
+# Устанавливаем webhook при запуске приложения
 def set_webhook():
+    """
+    Устанавливает webhook для Telegram бота, чтобы получать данные от Telegram.
+    """
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
     response = requests.post(url, json={'url': WEBHOOK_URL})
+    
     if response.status_code == 200:
-        print("Webhook установлен")
+        print("Webhook успешно установлен.")
     else:
-        print("Ошибка установки webhook:", response.text)
+        print(f"Ошибка при установке webhook: {response.text}")
 
+# Вызовем установку webhook при запуске приложения
 set_webhook()
