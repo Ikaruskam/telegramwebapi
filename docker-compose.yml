@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend/test.db:/app/test.db  # Монтируем файл базы данных в контейнер
+      - ./backend/test.db:/app/backend/test.db  # Монтируем файл базы данных в контейнер
     networks:
       - dev
 
