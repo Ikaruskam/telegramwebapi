@@ -13,6 +13,6 @@ RUN mkdir /data
 COPY . .
 
 # Установка переменной окружения для SQLite
-ENV DATABASE_URL="sqlite:////data/items.db"
+ENV DATABASE_URL="sqlite:////test.db"
 
 CMD [ "python", "main.py" ]
