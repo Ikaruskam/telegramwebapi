@@ -1,53 +1,53 @@
 import os
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-from database import SessionLocal, engine
-from models import UserData
-import requests
+import random
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
+import requests
 
-# Загрузка переменных окружения из .env
+# Загружаем переменные окружения
 load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-# Создаем таблицы в базе данных
-UserData.metadata.create_all(bind=engine)
-
 app = FastAPI()
 
-# Создание сессии базы данных
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# Настройка базы данных SQLite с SQLAlchemy
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
 
-# Установка webhook при старте
-@app.on_event("startup")
-def setup_webhook():
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
-    response = requests.post(url, json={"url": WEBHOOK_URL})
-    if response.status_code != 200:
-        raise HTTPException(status_code=500, detail="Webhook setup failed")
+# Пример модели для хранения данных
+class Item(Base):
+    tablename = "items"
 
-@app.post("/users/")
-def create_user(user_id: str, name: str, weight: int, height: int, db: Session = Depends(get_db)):
-    # Проверяем, не существует ли уже данные для этого пользователя
-    user_data = db.query(UserData).filter(UserData.user_id == user_id).first()
-    if user_data:
-        raise HTTPException(status_code=400, detail="User data already exists")
-    
-    new_user = UserData(user_id=user_id, name=name, weight=weight, height=height)
-    db.add(new_user)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    weight = Column(Integer)
+    height = Column(Integer)
+
+Base.metadata.create_all(bind=engine)
+
+@app.post("/items/")
+def create_item(name: str, weight: int, height: int, db: SessionLocal = Depends()):
+    item = Item(name=name, weight=weight, height=height)
+    db.add(item)
     db.commit()
-    db.refresh(new_user)
-    return new_user
+    db.refresh(item)
+    return item
 
-@app.get("/users/")
-def read_user_data(user_id: str, db: Session = Depends(get_db)):
-    user_data = db.query(UserData).filter(UserData.user_id == user_id).all()
-    if not user_data:
-        raise HTTPException(status_code=404, detail="User data not found")
-    return user_data
+# Устанавливаем webhook для Telegram
+def set_webhook():
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
+    response = requests.post(url, json={'url': WEBHOOK_URL})
+    if response.status_code == 200:
+        print("Webhook установлен")
+    else:
+        print("Ошибка установки webhook:", response.text)
+
+set_webhook()
