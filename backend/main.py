@@ -1,6 +1,7 @@
 import random
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel  # Импортируем BaseModel из pydantic для работы с моделями
 import uvicorn
 
 app = FastAPI()
