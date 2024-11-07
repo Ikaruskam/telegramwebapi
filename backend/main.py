@@ -9,7 +9,7 @@ import uvicorn
 
 # Загружаем переменные окружения
 load_dotenv()
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/backend/test.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
 
 app = FastAPI()
 
