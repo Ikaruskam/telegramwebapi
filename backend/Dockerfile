@@ -2,7 +2,7 @@
 FROM python:3.11.9-slim
 
 WORKDIR /app
-COPY ./backend /app
+COPY . /app
 
 # Копируем requirements и устанавливаем зависимости
 COPY requirements.txt requirements.txt
