@@ -80,6 +80,18 @@ def set_webhook():
 # Вызовем установку webhook при запуске приложения
 set_webhook()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        # "http://localhost:5173",
+        # "http://31.129.43.117",
+        "https://tvoitrenerbot.ru",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
