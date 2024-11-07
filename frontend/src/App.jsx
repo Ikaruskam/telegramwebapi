@@ -1,37 +1,42 @@
-import { useEffect, useState } from 'react'
-import './App.css'
-import axios from 'axios'
-import AddItemForm from './AddItemForm'
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
 function App() {
-  const [items, setItems] = useState([])
+  const [username, setUsername] = useState("");
+  const [message, setMessage] = useState("");
 
-  const fetchItems = () => {
-    axios.get('https://api.tvoitrenerbot.ru/items').then(r => {
-      setItems(r.data)
-    })
-  }
-
+  // Получаем данные пользователя через Telegram Web App
   useEffect(() => {
-    fetchItems()
-    const interval = setInterval(() => {
-      fetchItems()
-    }, 2000)
-    return () => clearInterval(interval)
-  }, [])
+    const tg = window.Telegram.WebApp;
+    setUsername(tg.initDataUnsafe?.user?.username || "Guest");
+  }, []);
+
+  // Отправка данных на сервер
+  const handleSubmit = async () => {
+    try {
+      await axios.post("https://api.tvoitrenerbot.ru/api/user_data", {
+        user_id: Math.random(),  // Тестовый user_id для примера
+        username,
+        text: message,
+      });
+      alert("Message sent successfully!");
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
+  };
 
   return (
-    <div>
-      <AddItemForm onItemAdded={fetchItems} />
-      <div>
-        {items.map(item => (
-          <span style={{ padding: '0px 4px' }} key={item.id} className="roll-out">
-            <span>{item.name} — Вес: {item.weight} кг, Рост: {item.height} см</span>
-          </span>
-        ))}
-      </div>
+    <div className="App">
+      <h1>Hello, {username}!</h1>
+      <input
+        type="text"
+        placeholder="Enter your message"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+      />
+      <button onClick={handleSubmit}>Send Message</button>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
