@@ -1,6 +1,6 @@
 import requests
 
-TOKEN = 'YOUR_BOT_TOKEN'  # Замените на ваш токен
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 URL = f'https://api.telegram.org/bot{TOKEN}/setWebhook'
 
 def set_webhook():
