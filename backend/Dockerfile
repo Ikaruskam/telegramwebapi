@@ -1,6 +1,9 @@
 # Используем базовый образ Python
 FROM python:3.11.9-slim
 
+WORKDIR /app
+COPY ./backend /app
+
 # Копируем requirements и устанавливаем зависимости
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip
