@@ -24,3 +24,7 @@ class Message(BaseModel):
 async def get_user_data(request: Request, message: Message):
     # Здесь вы можете обработать данные и сохранить их в БД
     return {"status": "success", "message": "User data received"}
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
